@@ -1,139 +1,14 @@
-/*
- * CS:APP Data Lab
- *
- * <Please put your name and userid here>
- *
- * bits.c - Source file with your solutions to the Lab.
- *          This is the file you will hand in to your instructor.
- *
- * WARNING: Do not include the <stdio.h> header; it confuses the dlc
- * compiler. You can still use printf for debugging without including
- * <stdio.h>, although you might get a compiler warning. In general,
- * it's not good practice to ignore compiler warnings, but in this
- * case it's OK.
- */
+## Lab1实验记录
 
-#if 0
-/*
- * Instructions to Students:
- *
- * STEP 1: Read the following instructions carefully.
- */
-
-You will provide your solution to the Data Lab by
-editing the collection of functions in this source file.
-
-INTEGER CODING RULES:
-
-  Replace the "return" statement in each function with one
-  or more lines of C code that implements the function. Your code
-  must conform to the following style:
-
-  int Funct(arg1, arg2, ...) {
-      /* brief description of how your implementation works */
-      int var1 = Expr1;
-      ...
-      int varM = ExprM;
-
-      varJ = ExprJ;
-      ...
-      varN = ExprN;
-      return ExprR;
-  }
-
-  Each "Expr" is an expression using ONLY the following:
-  1. Integer constants 0 through 255 (0xFF), inclusive. You are
-      not allowed to use big constants such as 0xffffffff.
-  2. Function arguments and local variables (no global variables).
-  3. Unary integer operations ! ~
-  4. Binary integer operations & ^ | + << >>
-
-  Some of the problems restrict the set of allowed operators even further.
-  Each "Expr" may consist of multiple operators. You are not restricted to
-  one operator per line.
-
-  You are expressly forbidden to:
-  1. Use any control constructs such as if, do, while, for, switch, etc.
-  2. Define or use any macros.
-  3. Define any additional functions in this file.
-  4. Call any functions.
-  5. Use any other operations, such as &&, ||, -, or ?:
-  6. Use any form of casting.
-  7. Use any data type other than int.  This implies that you
-     cannot use arrays, structs, or unions.
+  简要介绍实验要求如下：实验要求在一定限制条件下完成源文件中bits.c的一系列函数的实现。该实验主要考察了对补码表示法，浮点数表示法的理解和底层实现。
 
 
-  You may assume that your machine:
-  1. Uses 2s complement, 32-bit representations of integers.
-  2. Performs right shifts arithmetically.
-  3. Has unpredictable behavior when shifting if the shift amount
-     is less than 0 or greater than 31.
 
+### 函数 *bitXor()*
 
-EXAMPLES OF ACCEPTABLE CODING STYLE:
-  /*
-   * pow2plus1 - returns 2^x + 1, where 0 <= x <= 31
-   */
-  int pow2plus1(int x) {
-     /* exploit ability of shifts to compute powers of 2 */
-     return (1 << x) + 1;
-  }
+函数实现要求和函数签名如下：
 
-  /*
-   * pow2plus4 - returns 2^x + 4, where 0 <= x <= 31
-   */
-  int pow2plus4(int x) {
-     /* exploit ability of shifts to compute powers of 2 */
-     int result = (1 << x);
-     result += 4;
-     return result;
-  }
-
-FLOATING POINT CODING RULES
-
-For the problems that require you to implement floating-point operations,
-the coding rules are less strict.  You are allowed to use looping and
-conditional control.  You are allowed to use both ints and unsigneds.
-You can use arbitrary integer and unsigned constants. You can use any arithmetic,
-logical, or comparison operations on int or unsigned data.
-
-You are expressly forbidden to:
-  1. Define or use any macros.
-  2. Define any additional functions in this file.
-  3. Call any functions.
-  4. Use any form of casting.
-  5. Use any data type other than int or unsigned.  This means that you
-     cannot use arrays, structs, or unions.
-  6. Use any floating point data types, operations, or constants.
-
-
-NOTES:
-  1. Use the dlc (data lab checker) compiler (described in the handout) to
-     check the legality of your solutions.
-  2. Each function has a maximum number of operations (integer, logical,
-     or comparison) that you are allowed to use for your implementation
-     of the function.  The max operator count is checked by dlc.
-     Note that assignment ('=') is not counted; you may use as many of
-     these as you want without penalty.
-  3. Use the btest test harness to check your functions for correctness.
-  4. Use the BDD checker to formally verify your functions
-  5. The maximum number of ops for each function is given in the
-     header comment for each function. If there are any inconsistencies
-     between the maximum ops in the writeup and in this file, consider
-     this file the authoritative source.
-
-/*
- * STEP 2: Modify the following functions according the coding rules.
- *
- *   IMPORTANT. TO AVOID GRADING SURPRISES:
- *   1. Use the dlc compiler to check that your solutions conform
- *      to the coding rules.
- *   2. Use the BDD checker to formally verify that your solutions produce
- *      the correct answers.
- */
-
-#endif
-// 1
+```c
 /*
  * bitXor - x^y using only ~ and &
  *   Example: bitXor(4, 5) = 1
@@ -142,24 +17,77 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
+  return 2;
+}
+```
+
+> 该函数要求实现异或操作。
+
+简要分析可以很容易理解，实际上实现该函数用到的是离散数学和数字逻辑电路的知识。其本质是通过与门和非门实现异或门。将异或运算符通过逻辑运算符表示如下：
+
+${\displaystyle p\oplus q= (\lnot(p\land q)\land \lnot(\lnot p\land \lnot q))}$
+
+通过上式我们可以实现函数。
+
+代码如下：
+
+```c
+int bitXor(int x, int y) {
   int res = (~(x & y)) & (~((~x) & (~y)));
   return res;
 }
+```
+
+
+
+### 函数 *tmin()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * tmin - return minimum two's complement integer
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 4
  *   Rating: 1
  */
+int tmin(void) { return 2; }
+```
+
+> 该函数要求得到32位补码表示下的最小值。
+
+该值用二进制表示即为100..0,即最高位为1,其他为全0。故将常数1左移31位即可实现。
+
+代码如下：
+
+```c
 int tmin(void) { return 1 << 31; }
-// 2
+```
+
+
+
+### 函数 *isTmax()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * isTmax - returns 1 if x is the maximum, two's complement number,
  *     and 0 otherwise
- *   Legal ops: ! ~ & ^ |  +
+ *   Legal ops: ! ~ & ^ | +
  *   Max ops: 10
  *   Rating: 1
  */
+int isTmax(int x) { return 2; }
+```
+
+> 该函数判断一个数是否为32位补码表示法的最大数。
+
+该值用二进制表示即为000..1,即最低位为1,其他为全0。考虑到该值的二进制形式和上题存在对称结构。我们可以考虑如下做法：将x按位取反，再通过将x的值加1得到32位补码表示法中的最小值，再将两者做异或操作（即判断两数是否相等），最后排除0xffffffff的特殊情况。其中4,6两行为排除特殊情况的代码。
+
+代码如下：
+
+```c
 int isTmax(int x) {
   int res = !((~x) ^ (x + 1));
   // x为0xffffffff或0x7fffffff的时候,res为1，其他时候为0
@@ -168,6 +96,15 @@ int isTmax(int x) {
   res = (res & 1) & (!check_full_f & 1);
   return res;
 }
+```
+
+
+
+### 函数 *allOddBits()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
  *   where bits are numbered from 0 (least significant) to 31 (most significant)
@@ -176,6 +113,16 @@ int isTmax(int x) {
  *   Max ops: 12
  *   Rating: 2
  */
+int allOddBits(int x) { return 2; }
+```
+
+> 该函数判断一个数的二进制表示中是否所有奇数位均为1。
+
+实现该函数关键在于构造出一个结构为1010...10的二进制数作为掩码。利用该数和x的与操作可以将所有偶数位置0,并保留x奇数位的数，再将与操作的结果和掩码进行异或操作即可达成要求。
+
+代码如下：
+
+```c
 int allOddBits(int x) {
   int mask = 0xAA;
   mask = (0xAA << 8) + mask;
@@ -183,6 +130,15 @@ int allOddBits(int x) {
 
   return !((x & mask) ^ mask);
 }
+```
+
+
+
+### 函数 *negate()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * negate - return -x
  *   Example: negate(1) = -1.
@@ -190,8 +146,26 @@ int allOddBits(int x) {
  *   Max ops: 5
  *   Rating: 2
  */
+int negate(int x) { return 2; }
+```
+
+> 该函数要求实现取负值的操作。
+
+利用补码表示法中取反加1即可实现要求。
+
+代码如下：
+
+```c
 int negate(int x) { return ~x + 1; }
-// 3
+```
+
+
+
+### 函数 *isAsciiDigit()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * isAsciiDigit - return 1 if 0x30 <= x <= 0x39 (ASCII codes for characters '0'
  * to '9') Example: isAsciiDigit(0x35) = 1. isAsciiDigit(0x3a) = 0.
@@ -200,6 +174,23 @@ int negate(int x) { return ~x + 1; }
  *   Max ops: 15
  *   Rating: 3
  */
+int isAsciiDigit(int x) { return 2; }
+/*
+ * conditional - same as x ? y : z
+ *   Example: conditional(2,4,5) = 4
+ *   Legal ops: ! ~ & ^ | + << >>
+ *   Max ops: 16
+ *   Rating: 3
+ */
+```
+
+> 该函数要求判断x是否是ascii数字字符。
+
+实现该函数的思路主要是通过x和0x30和0x3a的大小关系来判断关系式*0x30 <= x <= 0x39*是否成立。由于题目限制不允许使用减号，所以利用了补码表示法中取反加1间接实现减法。然后通过检查计算结果的符号位来判断相对大小关系。
+
+代码如下：
+
+```CQL
 int isAsciiDigit(int x) {
   int sign = 1 << 31;
   int lower_bound = 0x30;
@@ -210,6 +201,15 @@ int isAsciiDigit(int x) {
   int check_upper = !(((x + minus_upper_bound) & sign) ^ sign);
   return (!check_lower) & check_upper;
 }
+```
+
+
+
+### 函数 *conditional()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * conditional - same as x ? y : z
  *   Example: conditional(2,4,5) = 4
@@ -217,13 +217,7 @@ int isAsciiDigit(int x) {
  *   Max ops: 16
  *   Rating: 3
  */
-int conditional(int x, int y, int z) {
-  int select = !(!x);
-  int mask = ~select + 1;
-  y = y & mask;
-  z = z & ~mask;
-  return y | z;
-}
+int conditional(int x, int y, int z) { return 2; }
 /*
  * isLessOrEqual - if x <= y  then return 1, else return 0
  *   Example: isLessOrEqual(4,5) = 1.
@@ -231,6 +225,50 @@ int conditional(int x, int y, int z) {
  *   Max ops: 24
  *   Rating: 3
  */
+```
+
+> 该函数要求实现三元表达式。
+
+实现该函数的主要思路是先将x转化成布尔型的变量。然后再根据x的值生成一个全1或者全0的变量。通过利用全1和全0在与其他数进行与操作中的特性来实现实验要求。
+
+代码如下：
+
+```c
+int conditional(int x, int y, int z) {
+  int select = !(!x);
+  int mask = ~select + 1;
+  y = y & mask;
+  z = z & ~mask;
+  return y | z;
+}
+```
+
+
+
+
+
+### 函数 *isLessOrEqual()*
+
+函数实现要求和函数签名如下：
+
+```c
+/*
+ * isLessOrEqual - if x <= y  then return 1, else return 0
+ *   Example: isLessOrEqual(4,5) = 1.
+ *   Legal ops: ! ~ & ^ | + << >>
+ *   Max ops: 24
+ *   Rating: 3
+ */
+int isLessOrEqual(int x, int y) { return 2; }
+```
+
+> 该函数要求实现<=运算。
+
+可以主要考虑函数实现的两个部分。主要思路类似函数*isAsciiDigit()*中通过相减判断大小的部分。但同是也发现函数*isAsciiDigit()*中参与运算的数值较小，不会发生溢出，但在该函数中必须考虑可能产生溢出的情形。故第一部分考虑在没有发生溢出的情形（即x,y同号），在上文中有类似实现，在此不赘述。第二部分考虑发生溢出的情形（即x,y不同号），分别考虑x符号为负且y符号为正和x符号为正且y符号为负两种情形，最后即可达成实验要求。
+
+代码如下：
+
+```c
 int isLessOrEqual(int x, int y) {
   int sign = 1 << 31;
   int minus_result = x + (~y + 1);
@@ -245,7 +283,15 @@ int isLessOrEqual(int x, int y) {
       !(!x_sign) & !y_sign;  ////检查是否为如下情形x符号为正且y符号为负
   return (check_all_zero | check_lower | check_x_y) & !check_y_x;
 }
-// 4
+```
+
+
+
+### 函数 *logicalNeg()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * logicalNeg - implement the ! operator, using all of
  *              the legal operators except !
@@ -254,12 +300,31 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 12
  *   Rating: 4
  */
+int logicalNeg(int x) { return 2; }
+```
+
+> 该函数要求实现！运算符。
+
+感觉实现思路比较奇怪。原理如下：主要根据符号位来判断。对于一个非零的数来说，它的符号位和它的负数的符号位一定有一个是1,而对于零来说两者均为0;
+
+代码如下：
+
+```c
 int logicalNeg(int x) {
   int negetive_x = ~x + 1;
   int check_if_positive = ~(negetive_x >> 31) + 1;
   int check_if_negetive = ~(x >> 31) + 1;
   return (check_if_negetive | check_if_positive) ^ 1;
 }
+```
+
+
+
+### 函数 *howManyBits()*
+
+函数实现要求和函数签名如下：
+
+```c
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
  *  Examples: howManyBits(12) = 5
@@ -272,17 +337,29 @@ int logicalNeg(int x) {
  *  Max ops: 90
  *  Rating: 4
  */
+int howManyBits(int x) { return 0; }
+```
+
+> 该函数要求返回表示x的最小位数。
+
+主要思路如下：对于正数，只需要该数的位数+1（符号位）。对于负数，只需要找到最高位为0的地方。
+
+实现如下：
+
+```c
 int howManyBits(int x) {
   int b16, b8, b4, b2, b1, b0;
   int sign = x >> 31;
-  x = (sign & ~x) | (~sign & x);
+  x = (sign & ~x) |
+      (~sign &
+       x);  
 
   // 不断缩小范围
-  b16 = !!(x >> 16) << 4;
-  x = x >> b16;
-  b8 = !!(x >> 8) << 3;
-  x = x >> b8;
-  b4 = !!(x >> 4) << 2;
+  b16 = !!(x >> 16) << 4;  
+  x = x >> b16;  
+  b8 = !!(x >> 8) << 3;  
+  x = x >> b8;           
+  b4 = !!(x >> 4) << 2;  
   x = x >> b4;
   b2 = !!(x >> 2) << 1;
   x = x >> b2;
@@ -290,8 +367,16 @@ int howManyBits(int x) {
   x = x >> b1;
   b0 = x;
   return b16 + b8 + b4 + b2 + b1 + b0 + 1;
-}
-// float
+}  
+```
+
+
+
+### 函数 *floatScale2()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * floatScale2 - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
@@ -303,6 +388,16 @@ int howManyBits(int x) {
  *   Max ops: 30
  *   Rating: 4
  */
+unsigned floatScale2(unsigned uf) { return 2; }
+```
+
+> 该函数要求实现在二进制层面上将浮点数乘2
+
+首先考虑一般情况（即exponent不是全0或者全1），此时情况较为简单，将exponent域加1即可。当为全1时直接返回uf即可。当为全0时考虑是否产生进位即可。
+
+代码如下：
+
+```c
 unsigned floatScale2(unsigned uf) {
   unsigned res;
   unsigned sign = uf >> 31;
@@ -325,6 +420,15 @@ unsigned floatScale2(unsigned uf) {
 
   return res;
 }
+```
+
+
+
+### 函数 *floatFloat2Int()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
  *   for floating point argument f.
@@ -337,6 +441,16 @@ unsigned floatScale2(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
+int floatFloat2Int(unsigned uf) { return 2; }
+```
+
+> 该函数要求将浮点数转换为整数。
+
+首先我们可以发现int类型表示的范围在float表示的范围中只占很少一部分，大部分的浮点数在转换的过程中都会发生溢出或者舍入。故我们对于浮点数的exponent域进行讨论。在讨论的过程中主要要注意的是significand域，在转换到浮点数的过程中要同时考虑隐藏的前导1和浮点数表示中的符号位。
+
+代码如下：
+
+```c
 int floatFloat2Int(unsigned uf) {
   int res;
   int sign = uf >> 31;
@@ -366,6 +480,15 @@ int floatFloat2Int(unsigned uf) {
   }
   return res;
 }
+```
+
+
+
+### 函数 *floatPower2()*
+
+函数实现要求和函数签名如下：
+
+```c
 /*
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
  *   (2.0 raised to the power x) for any 32-bit integer x.
@@ -379,6 +502,16 @@ int floatFloat2Int(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
+unsigned floatPower2(int x) { return 2; }
+```
+
+> 该函数要求将2的整数次幂转换为浮点数。
+
+该函数实现较为简单。大概只需要完成x到exponent域的值的转换即可。
+
+代码如下：
+
+```c
 unsigned floatPower2(int x) {
   int res;
   int sign = 0 << 31;
@@ -394,3 +527,10 @@ unsigned floatPower2(int x) {
   }
   return res;
 }
+```
+
+
+
+### 完成截图如下
+
+![](./images/image1.png)
