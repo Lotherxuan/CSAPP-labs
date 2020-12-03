@@ -51,7 +51,7 @@ Breakpoint 1, 0x0000000000400ee0 in phase_1 ()
    0x400ef2 <phase_1+18>:       call   0x40143a <explode_bomb>
    0x400ef7 <phase_1+23>:       add    $0x8,%rsp
    0x400efb <phase_1+27>:       ret    
-   0x400efc <phase_2>:  push   %rbp
+   0x400efc <phase_2>:  		push   %rbp
    0x400efd <phase_2+1>:        push   %rbx
 
 ```
@@ -432,6 +432,92 @@ So you got that one.  Try this one.
 
 
 ### phase5
+
+```assembly
+Breakpoint 1, 0x0000000000401062 in phase_5 ()
+(gdb) x/40i $rip
+=> 0x401062 <phase_5>:  		push   %rbx   
+   0x401063 <phase_5+1>:        sub    $0x20,%rsp  //分配32字节的栈空间
+   0x401067 <phase_5+5>:        mov    %rdi,%rbx   //%rdi和%rbx的值即为我们输入字符串的首地址
+   0x40106a <phase_5+8>:        mov    %fs:0x28,%rax   
+   0x401073 <phase_5+17>:       mov    %rax,0x18(%rsp)   //该行和上一行设置金丝雀值，防止缓冲区溢出攻击
+   0x401078 <phase_5+22>:       xor    %eax,%eax
+   0x40107a <phase_5+24>:       call   0x40131b <string_length>
+   0x40107f <phase_5+29>:       cmp    $0x6,%eax    //字符串长度不为6时引爆炸弹
+   0x401082 <phase_5+32>:       je     0x4010d2 <phase_5+112>
+   0x401084 <phase_5+34>:       call   0x40143a <explode_bomb>
+   0x401089 <phase_5+39>:       jmp    0x4010d2 <phase_5+112>
+   0x40108b <phase_5+41>:       movzbl (%rbx,%rax,1),%ecx  //%ecx的值即为输入字符串以%rax作为偏移量的字符的值
+   0x40108f <phase_5+45>:       mov    %cl,(%rsp)
+   0x401092 <phase_5+48>:       mov    (%rsp),%rdx    
+   0x401096 <phase_5+52>:       and    $0xf,%edx   //%ecx的低四位作为%edx的值
+   0x401099 <phase_5+55>:       movzbl 0x4024b0(%rdx),%edx  //%edx作为偏移量，取得以0x4024b0作为字符串起始地址的某字符的值
+   0x4010a0 <phase_5+62>:       mov    %dl,0x10(%rsp,%rax,1)  //为以%rsp+0x10为字符串起始地址，%rax为偏移量的字符赋值
+   0x4010a4 <phase_5+66>:       add    $0x1,%rax
+   0x4010a8 <phase_5+70>:       cmp    $0x6,%rax   //循环重复6次
+   0x4010ac <phase_5+74>:       jne    0x40108b <phase_5+41>
+   0x4010ae <phase_5+76>:       movb   $0x0,0x16(%rsp)
+   0x4010b3 <phase_5+81>:       mov    $0x40245e,%esi
+   0x4010b8 <phase_5+86>:       lea    0x10(%rsp),%rdi
+   0x4010bd <phase_5+91>:       call   0x401338 <strings_not_equal>  //比较字符串是否相等
+   0x4010c2 <phase_5+96>:       test   %eax,%eax
+   0x4010c4 <phase_5+98>:       je     0x4010d9 <phase_5+119>
+   0x4010c6 <phase_5+100>:      call   0x40143a <explode_bomb>
+   0x4010cb <phase_5+105>:      nopl   0x0(%rax,%rax,1)
+   0x4010d0 <phase_5+110>:      jmp    0x4010d9 <phase_5+119>
+   0x4010d2 <phase_5+112>:      mov    $0x0,%eax
+   0x4010d7 <phase_5+117>:      jmp    0x40108b <phase_5+41>
+   0x4010d9 <phase_5+119>:      mov    0x18(%rsp),%rax
+   0x4010de <phase_5+124>:      xor    %fs:0x28,%rax   //取出金丝雀值
+   0x4010e7 <phase_5+133>:      je     0x4010ee <phase_5+140>
+   0x4010e9 <phase_5+135>:      call   0x400b30 <__stack_chk_fail@plt>  //检查栈是否被破坏
+   0x4010ee <phase_5+140>:      add    $0x20,%rsp  //释放栈空间
+   0x4010f2 <phase_5+144>:      pop    %rbx
+   0x4010f3 <phase_5+145>:      ret   
+```
+
+同样和前面的phase一样，我们让程序运行到*phase_5*的位置，然后打印出*phase_5*的汇编代码。由于该段汇编代码比较长，会通过注释的形式辅助讲解这段代码。
+
+首先看到第26行，该行算是核心检测条件。我们把0x10(%rsp)和常数0x40245e这两个字符串的起始地址作为函数的两个参数送入字符串比较函数，根据两个字符串是否相等来决定是否引爆炸弹。第二个参数是已知参数，所以我们可以直接查看字符串内容，如下所示。
+```shell
+(gdb) x/s 0x40245e
+0x40245e:       "flyers"
+```
+接着我们考虑0x10(%rsp)的值，显然这是栈上我们分配的空间，其字符串的具体内容一定是在函数体内部赋值的。在第14行到第22行的循环体内部，我们可以看到是在第18行进行字符串赋值的。顺便我们也可以观察循环结构，循环共执行6次，依次为以0x10(%rsp)为首地址的字符串的0~5的偏移量上的字符赋值。第18行我们可以值的来源是以内存地址0x4024b0为基址，%edx为偏移量来获取的。这样我们可以接着查看0x4024b0处字符串的内容，如下所示。
+```shell
+(gdb) x/s 0x4024b0
+0x4024b0 <array.3449>:  "maduiersnfotvbylSo you think you can stop the bomb with ctrl-c, do you?"
+```
+这个字符串可以看到偏移量0~15处都是字母，后面则是一串自然语言。这显然不是偶然，我们前面提到偏移量是%edx的值，从第14到第17行我们可以看到%edx的值实际上是%ecx的低四位，所以取值范围为0~15。也就是说虽然这串字符很长，但我们只取得到偏移量为0~15的字符，大概就像密码表一样，后面那句自然语言基本就是彩蛋了。对照密码表我们可以写出偏移量，偏移量用16进制表示（待会儿会看到用途）。如下表所示
+
+| f    | l    | y    | e    | r    | s    |
+| ---- | ---- | ---- | ---- | ---- | ---- |
+| 0x9  | 0xf  | 0xe  | 0x5  | 0x6  | 0x7  |
+
+接下来我们看到第14行，可以看到偏移量的来源正是我们输入字符串的低四位的值。ASCII码一共有8位，我们只需在可显示字符中找到低四位和偏移量相等的即可，我选取的6个字符如下所示
+| 9    | ?    | >    | 5    | 6    | 7    |
+| ---- | ---- | ---- | ---- | ---- | ---- |
+| 0x39 | 0x3f | 0x3e | 0x35 | 0x36 | 0x37 |
+
+运行结果如下：
+
+```shell
+$ ./bomb
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Border relations with Canada have never been better.
+Phase 1 defused. How about the next one?
+1 2 4 8 16 32
+That's number 2.  Keep going!
+0 207
+Halfway there!
+3 0
+So you got that one.  Try this one.
+9?>567
+Good work!  On to the next...
+```
+
+### phase6
 
 ```
 
