@@ -1,4 +1,4 @@
-## Lab2实验记录
+## zLab2实验记录
 
 简要介绍实验要求如下，实验要求通过反汇编一个二进制文件来拆除一个二进制炸弹。
 
@@ -286,3 +286,74 @@ That's number 2.  Keep going!
 
 
 ### phase3
+
+```assembly
+Breakpoint 1, 0x0000000000400f43 in phase_3 ()
+(gdb) x/35i $rip
+=> 0x400f43 <phase_3>:  		sub    $0x18,%rsp
+   0x400f47 <phase_3+4>:        lea    0xc(%rsp),%rcx
+   0x400f4c <phase_3+9>:        lea    0x8(%rsp),%rdx
+   0x400f51 <phase_3+14>:       mov    $0x4025cf,%esi
+   0x400f56 <phase_3+19>:       mov    $0x0,%eax
+   0x400f5b <phase_3+24>:       call   0x400bf0 <__isoc99_sscanf@plt>
+   0x400f60 <phase_3+29>:       cmp    $0x1,%eax
+   0x400f63 <phase_3+32>:       jg     0x400f6a <phase_3+39>
+   0x400f65 <phase_3+34>:       call   0x40143a <explode_bomb>
+   0x400f6a <phase_3+39>:       cmpl   $0x7,0x8(%rsp)
+   0x400f6f <phase_3+44>:       ja     0x400fad <phase_3+106>
+   0x400f71 <phase_3+46>:       mov    0x8(%rsp),%eax
+   0x400f75 <phase_3+50>:       jmp    *0x402470(,%rax,8)
+   0x400f7c <phase_3+57>:       mov    $0xcf,%eax
+   0x400f81 <phase_3+62>:       jmp    0x400fbe <phase_3+123>
+   0x400f83 <phase_3+64>:       mov    $0x2c3,%eax
+   0x400f88 <phase_3+69>:       jmp    0x400fbe <phase_3+123>
+   0x400f8a <phase_3+71>:       mov    $0x100,%eax
+   0x400f8f <phase_3+76>:       jmp    0x400fbe <phase_3+123>
+   0x400f91 <phase_3+78>:       mov    $0x185,%eax
+   0x400f96 <phase_3+83>:       jmp    0x400fbe <phase_3+123>
+   0x400f98 <phase_3+85>:       mov    $0xce,%eax
+   0x400f9d <phase_3+90>:       jmp    0x400fbe <phase_3+123>
+   0x400f9f <phase_3+92>:       mov    $0x2aa,%eax
+   0x400fa4 <phase_3+97>:       jmp    0x400fbe <phase_3+123>
+   0x400fa6 <phase_3+99>:       mov    $0x147,%eax
+   0x400fab <phase_3+104>:      jmp    0x400fbe <phase_3+123>
+   0x400fad <phase_3+106>:      call   0x40143a <explode_bomb>
+   0x400fb2 <phase_3+111>:      mov    $0x0,%eax
+   0x400fb7 <phase_3+116>:      jmp    0x400fbe <phase_3+123>
+   0x400fb9 <phase_3+118>:      mov    $0x137,%eax
+   0x400fbe <phase_3+123>:      cmp    0xc(%rsp),%eax
+   0x400fc2 <phase_3+127>:      je     0x400fc9 <phase_3+134>
+   0x400fc4 <phase_3+129>:      call   0x40143a <explode_bomb>
+   0x400fc9 <phase_3+134>:      add    $0x18,%rsp
+   0x400fcd <phase_3+138>:      ret    
+```
+
+同样和前面的phase一样，我们让程序运行到*phase_3*的位置，然后打印出*phase_3*的汇编代码。我们主要关注第15行和第15行下面接着的连续16行代码。可以看到该phase主要考察对*switch*语句的运用和理解。*(%rsp+8)*的值实际上充当了地址的偏移量，指向了*switch*语句中某一个*case*的地址。接着观察12、13行，我们可以看到*(%rsp+8)*的值被限定到不大于7,且是一个无符号数，故取值范围为0~7共8个值。然后我们观察第15行下面接着的连续16行代码，可以看到没两行代码为一组，结构都是给%eax赋值，然后跳转到某一个地址。这也印证了我们先前的猜想。下面我们打印出地址0x402470处的值如下。从打印出来的16进制表示我们可以看到如下特点，首先是每64位为一组，表示一个地址值。每一行存储了两个地址。其次我们从字节顺序也能发现这是小端序的机器。接下来就可以解出phase3了，每一个*(%rsp+8)*的值对应着跳转到下面的某个*case*,也就意味着对应着某个*(%rsp+12)*的值，故最终有8个解。
+
+```assembly
+(gdb) x/20x 0x402470
+0x402470:       0x00400f7c      0x00000000      0x00400fb9      0x00000000
+0x402480:       0x00400f83      0x00000000      0x00400f8a      0x00000000
+0x402490:       0x00400f91      0x00000000      0x00400f98      0x00000000
+0x4024a0:       0x00400f9f      0x00000000      0x00400fa6      0x00000000
+
+```
+
+运行结果如下：
+
+```shell
+$ ./bomb
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Border relations with Canada have never been better.
+Phase 1 defused. How about the next one?
+1 2 4 8 16 32
+That's number 2.  Keep going!
+0 207
+Halfway there!
+```
+
+
+
+### phase4
+
