@@ -1,4 +1,4 @@
-## zLab2实验记录
+## Lab2实验记录
 
 简要介绍实验要求如下，实验要求通过反汇编一个二进制文件来拆除一个二进制炸弹。
 
@@ -356,4 +356,84 @@ Halfway there!
 
 
 ### phase4
+
+```assembly
+(gdb) x/22i $rip
+=> 0x40100c <phase_4>:  		sub    $0x18,%rsp
+   0x401010 <phase_4+4>:        lea    0xc(%rsp),%rcx
+   0x401015 <phase_4+9>:        lea    0x8(%rsp),%rdx
+   0x40101a <phase_4+14>:       mov    $0x4025cf,%esi
+   0x40101f <phase_4+19>:       mov    $0x0,%eax
+   0x401024 <phase_4+24>:       call   0x400bf0 <__isoc99_sscanf@plt>
+   0x401029 <phase_4+29>:       cmp    $0x2,%eax
+   0x40102c <phase_4+32>:       jne    0x401035 <phase_4+41>
+   0x40102e <phase_4+34>:       cmpl   $0xe,0x8(%rsp)
+   0x401033 <phase_4+39>:       jbe    0x40103a <phase_4+46>
+   0x401035 <phase_4+41>:       call   0x40143a <explode_bomb>
+   0x40103a <phase_4+46>:       mov    $0xe,%edx
+   0x40103f <phase_4+51>:       mov    $0x0,%esi
+   0x401044 <phase_4+56>:       mov    0x8(%rsp),%edi
+   0x401048 <phase_4+60>:       call   0x400fce <func4>
+   0x40104d <phase_4+65>:       test   %eax,%eax
+   0x40104f <phase_4+67>:       jne    0x401058 <phase_4+76>
+   0x401051 <phase_4+69>:       cmpl   $0x0,0xc(%rsp)
+   0x401056 <phase_4+74>:       je     0x40105d <phase_4+81>
+   0x401058 <phase_4+76>:       call   0x40143a <explode_bomb>
+   0x40105d <phase_4+81>:       add    $0x18,%rsp
+   0x401061 <phase_4+85>:       ret
+```
+同样和前面的phase一样，我们让程序运行到*phase_4*的位置，然后打印出*phase_4*的汇编代码。首先由第3、4行分配的地址以及第5行向*scanf*传递的参数可以看到该phase我们预计将输入2个数字。其中*(%rsp+12)*的值比较好确定。我们直接关注第19、20行，可以直接解出*(%rsp+12)*的值就是0。至于*(%rsp+8)*的值我们可以首先看向第10行，该行限定了*(%rsp+8)*的范围必须小于14。这是还算挺重要的一个信息，我们会在后面用到。接下来的第13、14、15、16行大致是设置传递给函数*func4*的参数，然后调用函数。第17、18行表示要求函数返回值必须为0。然后我们分析函数*func4*的内容。这其实是一个非常奇怪的递归函数。传递给函数的参数有如下特点，第二、三个参数是程序设定好的常数值，第一个参数虽然来自用户输入，但范围也有所限定。只要能进入这个递归函数体的内部，函数最后的返回值一定是0。所以我们输入的第一个数字可以是小于14的任何数字，第二个数字为0。
+
+顺便说一句，一开始我也对在这里放这样一个返回值为常数的函数感觉非常奇怪。但仔细想想从代码健壮性的角度似乎也是可以理解的，考虑到如果把函数递归次数作为程序暴露给外部的接口，则会有可能出现耗尽栈空间等等结果。
+
+```assembly
+(gdb) x/22i 0x400fce
+   0x400fce <func4>:    sub    $0x8,%rsp
+   0x400fd2 <func4+4>:  mov    %edx,%eax
+   0x400fd4 <func4+6>:  sub    %esi,%eax
+   0x400fd6 <func4+8>:  mov    %eax,%ecx
+   0x400fd8 <func4+10>: shr    $0x1f,%ecx
+   0x400fdb <func4+13>: add    %ecx,%eax
+   0x400fdd <func4+15>: sar    %eax
+   0x400fdf <func4+17>: lea    (%rax,%rsi,1),%ecx
+   0x400fe2 <func4+20>: cmp    %edi,%ecx
+   0x400fe4 <func4+22>: jle    0x400ff2 <func4+36>
+   0x400fe6 <func4+24>: lea    -0x1(%rcx),%edx
+   0x400fe9 <func4+27>: call   0x400fce <func4>
+   0x400fee <func4+32>: add    %eax,%eax
+   0x400ff0 <func4+34>: jmp    0x401007 <func4+57>
+   0x400ff2 <func4+36>: mov    $0x0,%eax
+   0x400ff7 <func4+41>: cmp    %edi,%ecx
+   0x400ff9 <func4+43>: jge    0x401007 <func4+57>
+   0x400ffb <func4+45>: lea    0x1(%rcx),%esi
+   0x400ffe <func4+48>: call   0x400fce <func4>
+   0x401003 <func4+53>: lea    0x1(%rax,%rax,1),%eax
+   0x401007 <func4+57>: add    $0x8,%rsp
+   0x40100b <func4+61>: ret
+```
+
+运行结果如下：
+
+```shell
+$ ./bomb
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Border relations with Canada have never been better.
+Phase 1 defused. How about the next one?
+1 2 4 8 16 32
+That's number 2.  Keep going!
+0 207
+Halfway there!
+3 0
+So you got that one.  Try this one.
+
+```
+
+
+
+### phase5
+
+```
+
+```
 
