@@ -58,17 +58,6 @@ void* mm_malloc(size_t size);
 void mm_free(void* bp);
 void* mm_realloc(void* ptr, size_t size);
 
-team_t team = {
-    /* Team name */
-    "xuan's team",
-    /* First member's full name */
-    "Luo Yuxuan",
-    /* First member's email address */
-    "2018302120209@whu.edu.cn",
-    /* Second member's full name (leave blank if none) */
-    "",
-    /* Second member's email address (leave blank if none) */
-    ""};
 /*
  * extend heap by words * word(4 bytes)
  */
