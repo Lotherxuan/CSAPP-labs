@@ -19,7 +19,7 @@
 #define WSIZE 4
 #define DSIZE 8
 #define CHUNKSIZE (1 << 12) /* Extend heap by this amount (bytes) */
-#define MINBLOCKSIZE 16
+#define MINBLOCKSIZE 2 * DSIZE
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define PACK(size, alloc) \
@@ -32,19 +32,15 @@
 #define GET_SIZE(p) (GET(p) & ~0x7) /* read the size field from address p */
 #define GET_ALLOC(p) (GET(p) & 0x1) /* read the alloc field from address p */
 
-#define HDRP(bp) \
-  ((char*)(bp)-WSIZE) /* given block ptr bp, compute address of its header */
-#define FTRP(bp)                      \
-  ((char*)(bp) + GET_SIZE(HDRP(bp)) - \
-   DSIZE) /* given block ptr bp, compute address of its footer */
+/* given block ptr bp, compute address of its header */
+#define HDRP(bp) ((char*)(bp)-WSIZE)
+/* given block ptr bp, compute address of its footer */
+#define FTRP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
 
-#define NEXT_BLKP(bp) \
-  ((char*)(bp) +      \
-   GET_SIZE(          \
-       HDRP(bp))) /* given block ptr bp, compute address of next blocks */
-#define PREV_BLKP(bp)                                                      \
-  ((char*)(bp)-GET_SIZE((char*)(bp)-DSIZE)) /* given block ptr bp, compute \
-                                               address of prev blocks */
+/* given block ptr bp, compute address of next blocks */
+#define NEXT_BLKP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)))
+/* given block ptr bp, compute address of prev blocks */
+#define PREV_BLKP(bp) ((char*)(bp)-GET_SIZE((char*)(bp)-DSIZE))
 
 static char* heap_listp;
 
@@ -69,6 +65,7 @@ team_t team = {
     "",
     /* Second member's email address (leave blank if none) */
     ""};
+
 /*
  * extend heap by words * word(4 bytes)
  */
@@ -121,7 +118,8 @@ static void* coalesce(void* bp) {
  * find_fit - use first fit strategy to find an empty block.
  */
 static void* find_fit(size_t asize) {
-  for (char* bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+  char* bp;
+  for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
     if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize) {
       return bp;
     }
@@ -130,31 +128,23 @@ static void* find_fit(size_t asize) {
 }
 
 /*
- * split_block
- */
-static void split_block(void* bp, size_t asize) {
-  size_t size = GET_SIZE(HDRP(bp));
-
-  if ((size - asize) >= MINBLOCKSIZE) {
-    PUT(HDRP(bp), PACK(asize, 1));
-    PUT(FTRP(bp), PACK(asize, 1));
-    bp = NEXT_BLKP(bp);
-    PUT(HDRP(bp), PACK(size - asize, 0));
-    PUT(FTRP(bp), PACK(size - asize, 0));
-  }
-}
-
-/*
  * place - Place the request block at the beginning of the free block,
  *         and only split if the remaining part is equal to or larger than the
  * size of the smallest block
  */
 static void place(void* bp, size_t asize) {
-  size_t size = GET_SIZE(HDRP(bp));
-  PUT(HDRP(bp), PACK(size, 1));
-  PUT(FTRP(bp), PACK(size, 1));
+  size_t csize = GET_SIZE(HDRP(bp));
 
-  split_block(bp, asize);
+  if ((csize - asize) >= MINBLOCKSIZE) {
+    PUT(HDRP(bp), PACK(asize, 1));
+    PUT(FTRP(bp), PACK(asize, 1));
+    bp = NEXT_BLKP(bp);
+    PUT(HDRP(bp), PACK(csize - asize, 0));
+    PUT(FTRP(bp), PACK(csize - asize, 0));
+  } else {
+    PUT(HDRP(bp), PACK(csize, 1));
+    PUT(FTRP(bp), PACK(csize, 1));
+  }
 }
 
 /*
