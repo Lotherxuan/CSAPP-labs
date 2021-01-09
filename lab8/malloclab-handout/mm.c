@@ -1,4 +1,4 @@
-// 显式空闲链表 使用后进先出(LIFO)的策略，将新释放的块放置在链表的开始处
+// 显式空闲链表 使用按地址排序的策略，链表中每个块的地址都小于它的后继的地址
 #include "mm.h"
 
 #include <assert.h>
@@ -62,6 +62,22 @@ void* mm_malloc(size_t size);
 void mm_free(void* bp);
 void* mm_realloc(void* ptr, size_t size);
 
+/* static void help_debug() {
+  char* bp = free_listp;
+  int count = 0;
+  printf("free list:");
+  for (bp = free_listp; bp; bp = GET_NEXT(bp)) {
+    if (count < 10) {
+      printf("%p->", bp);
+      count++;
+    } else {
+      break;
+    }
+  }
+  printf("\n");
+  return;
+} */
+
 static void remove_from_free_list(void* bp) {
   if (bp == NULL || GET_ALLOC(HDRP(bp))) {
     return;
@@ -99,11 +115,34 @@ static void insert_to_free_list(void* bp) {
     return;
   }
 
-  // insert to the head of free lists
-  SET_PREV(bp, 0);
-  SET_NEXT(bp, free_listp);
-  SET_PREV(free_listp, bp);
-  free_listp = bp;
+  char* search_ptr;
+  for (search_ptr = free_listp; search_ptr; search_ptr = GET_NEXT(search_ptr)) {
+    // printf("bp:%p search_ptr:%p\n", bp, search_ptr);
+    if (!GET_NEXT(search_ptr)) {
+      if (search_ptr < bp) {
+        SET_NEXT(search_ptr, bp);
+        SET_PREV(bp, search_ptr);
+        SET_NEXT(bp, 0);
+        break;
+      }
+    }
+    if (search_ptr > bp) {
+      if (!GET_PREV(search_ptr)) {
+        SET_NEXT(bp, search_ptr);
+        SET_PREV(search_ptr, bp);
+        SET_PREV(bp, 0);
+        free_listp = bp;
+        break;
+      } else {
+        char* prev_bp = GET_PREV(search_ptr);
+        SET_NEXT(bp, search_ptr);
+        SET_PREV(search_ptr, bp);
+        SET_PREV(bp, prev_bp);
+        SET_NEXT(prev_bp, bp);
+        break;
+      }
+    }
+  }
 }
 
 team_t team = {

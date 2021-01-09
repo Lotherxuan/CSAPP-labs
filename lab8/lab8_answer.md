@@ -45,7 +45,11 @@
 
 ### 实验过程
 
-#### 隐式空闲链表，首次适配，立即合并
+#### 隐式空闲链表
+
+隐式空闲链表将遵循以下思路，先根据CSAPP书上的*9.9.12节*来实现一个最简单的基于隐式空闲链表的内存分配器，然后再基于不同的放置策略和合并策略的组合来研究不同放置策略和合并策略对内存分配器性能的影响。
+
+##### 首次适配 立即合并
 
 代码地址：[mm_1.c](./malloclab-handout/mm_1.c)
 
@@ -215,7 +219,9 @@ void* mm_realloc(void* ptr, size_t size) {
 ![](./images/image1.png)
 可以看到主要问题是空间利用率不高，产生了较多的内部和外部碎片，我们会在后面的内存分配器设计中进行进一步优化。
 
-#### 隐式空闲链表，下一次适配，立即合并
+##### 下一次适配 立即合并
+
+代码地址：[mm_2.c](./malloclab-handout/mm_2.c)
 
 相比首次适配，立即合并，只需修改`find_fit()`函数。
 
@@ -243,7 +249,9 @@ static void* find_fit(size_t asize) {
 }
 ```
 
-#### 隐式空闲链表，最佳适配，立即合并
+##### 最佳适配 立即合并
+
+代码地址：[mm_3.c](./malloclab-handout/mm_3.c)
 
 相比首次适配，立即合并，只需修改`find_fit()`函数。
 
@@ -269,7 +277,9 @@ static void* find_fit(size_t asize) {
 }
 ```
 
-#### 隐式空闲链表，首次适配，推迟合并
+##### 首次适配 推迟合并
+
+代码地址：[mm_4.c](./malloclab-handout/mm_4.c)
 
 相比首次适配，立即合并，我们只需删除在`extend_heap()`和`mm_free()`中对`coalesce()`的引用，然后修改`malloc()`函数。我们采取如下策略，在每次malloc失败的时候遍历整个块链表，然后合并所有空闲块，合并后再次尝试执行malloc过程。
 
@@ -317,7 +327,85 @@ void* mm_malloc(size_t size) {
 
 #### 显式空闲链表
 
-先进后出 按地址排序
+显式空闲链表我们将主要研究空闲链表中块的排序策略。
+
+##### 后进先出(LIFO)
+
+代码地址：[mm_7.c](./malloclab-handout/mm_7.c)
+
+使用后进先出策略时，每次插入空闲块到空闲链表中时，都将空闲块插入到链表的头部。
+
+该内存分配器运行结果如下：
+
+![](./images/image2.png)
+
+##### 按地址排序
+
+代码地址：[mm_8.c](./malloclab-handout/mm_8.c)
+
+使用按地址排序策略时，每次插入空闲块到空闲链表中时，都插入到地址大于当前空闲块的节点的前面。
+
+相比前面的后进先出策略(mm_7.c)，我们只需修改`insert_to_free_list()`函数，也就是插入到空闲链表的函数，根据地址大小来进行插入。
+
+代码如下：
+
+```c
+static void insert_to_free_list(void* bp) {
+  if (bp == NULL) {
+    return;
+  }
+  if (free_listp == NULL) {
+    // free lists is empty
+    free_listp = bp;
+    SET_NEXT(bp, 0);
+    SET_PREV(bp, 0);
+    return;
+  }
+
+  char* search_ptr;
+  for (search_ptr = free_listp; search_ptr; search_ptr = GET_NEXT(search_ptr)) {
+    // printf("bp:%p search_ptr:%p\n", bp, search_ptr);
+    if (!GET_NEXT(search_ptr)) {
+      if (search_ptr < bp) {
+        SET_NEXT(search_ptr, bp);
+        SET_PREV(bp, search_ptr);
+        SET_NEXT(bp, 0);
+        break;
+      }
+    }
+    if (search_ptr > bp) {
+      if (!GET_PREV(search_ptr)) {
+        SET_NEXT(bp, search_ptr);
+        SET_PREV(search_ptr, bp);
+        SET_PREV(bp, 0);
+        free_listp = bp;
+        break;
+      } else {
+        char* prev_bp = GET_PREV(search_ptr);
+        SET_NEXT(bp, search_ptr);
+        SET_PREV(search_ptr, bp);
+        SET_PREV(bp, prev_bp);
+        SET_NEXT(prev_bp, bp);
+        break;
+      }
+    }
+  }
+}
+```
+
+该内存分配器运行结果如下：
+
+![](./images/image3.png)
+
+#### 分离空闲链表
+
+分离空闲链表我们主要进行分离适配方法的实验，主要出于如下考虑：
+
+- 分离适配方法在内存分配中较为常见
+- C标准库中提供的GNU malloc包就是采用的这种方法
+- 该方法较为快速，且对内存的使用很有效率
+
+
 
 ### 实验结果
 
@@ -339,29 +427,20 @@ void* mm_malloc(size_t size) {
 
 #### 显式空闲链表
 
-|            | 立即合并 | 推迟合并 |
-| :--------: | :------: | :------: |
-|  首次适配  |  mm_7.c  |          |
-| 下一次适配 |          |          |
-|  最佳适配  |          |          |
+| 后进先出 | 按地址排序 |
+| :------: | :--------: |
+|  mm_7.c  |   mm_8.c   |
 
-|            | 立即合并 | 推迟合并 |
-| :--------: | :------: | :------: |
-|  首次适配  |          |          |
-| 下一次适配 |          |          |
-|  最佳适配  |          |          |
+| 后进先出 | 按地址排序 |
+| :------: | :--------: |
+| 42+40=82 |  44+40=84  |
 #### 分离空闲链表
-|            | 立即合并 | 推迟合并 |
-| :--------: | :------: | :------: |
-|  首次适配  |          |          |
-| 下一次适配 |          |          |
-|  最佳适配  |          |          |
 
-|            | 立即合并 | 推迟合并 |
-| :--------: | :------: | :------: |
-|  首次适配  |          |          |
-| 下一次适配 |          |          |
-|  最佳适配  |          |          |
+| 伙伴系统 |
+| :------: |
+|          |
+
+
 
 ### 结果分析
 
