@@ -1,6 +1,4 @@
 // 隐式空闲链表 推迟合并 首次适配
-#include "mm.h"
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +6,7 @@
 #include <unistd.h>
 
 #include "memlib.h"
+#include "mm.h"
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
@@ -116,23 +115,25 @@ static void* coalesce(void* bp) {
 }
 
 /*
- * find_fit - use best fit strategy to find an empty block.
+ * find_fit - use next fit strategy to find an empty block.
  */
 static void* find_fit(size_t asize) {
   char* bp;
-  char* best = NULL;
+  char* first_search = NULL;
   for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
     if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize) {
-      if (!best) {
-        best = bp;
+      if (!first_search) {
+        first_search = bp;
       } else {
-        best = (GET_SIZE(HDRP(best)) - asize) < (GET_SIZE(HDRP(bp)) - asize)
-                   ? best
-                   : bp;
+        return bp;
       }
     }
   }
-  return best;
+  if (first_search) {
+    return first_search;
+  } else {
+    return NULL;
+  }
 }
 
 /*

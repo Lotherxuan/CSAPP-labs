@@ -1,6 +1,4 @@
-// 隐式空闲链表 推迟合并 首次适配
-#include "mm.h"
-
+// 隐式空闲链表 立即合并 最佳适配
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +6,7 @@
 #include <unistd.h>
 
 #include "memlib.h"
+#include "mm.h"
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
@@ -83,7 +82,7 @@ static void* extend_heap(size_t words) {
   PUT(FTRP(bp), PACK(size, 0));          // free block footer
   PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));  // new epilogue header
 
-  return bp;  // coalesce if the previous block was free
+  return coalesce(bp);  // coalesce if the previous block was free
 }
 
 /*
@@ -191,19 +190,6 @@ void* mm_malloc(size_t size) {
     place(bp, asize);
     return bp;
   }
-  // no fit found, coalesce free block first
-  char* coalesce_ptr;
-  for (coalesce_ptr = heap_listp; GET_SIZE(HDRP(coalesce_ptr)) > 0;
-       coalesce_ptr = NEXT_BLKP(coalesce_ptr)) {
-    if (!GET_ALLOC(HDRP(coalesce_ptr))) {
-      coalesce(coalesce_ptr);
-    }
-  }
-  // try to find fit after coalesce
-  if ((bp = find_fit(asize)) != NULL) {
-    place(bp, asize);
-    return bp;
-  }
 
   // no fit found, get more memory and place the block
   extendsize = MAX(asize, CHUNKSIZE);
@@ -220,6 +206,7 @@ void mm_free(void* bp) {
 
   PUT(HDRP(bp), PACK(size, 0));
   PUT(FTRP(bp), PACK(size, 0));
+  coalesce(bp);
 }
 
 /*
