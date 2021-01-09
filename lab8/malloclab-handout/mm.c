@@ -1,4 +1,4 @@
-// 隐式空闲链表 推迟合并 首次适配
+// 显式空闲链表 使用后进先出(LIFO)的策略，将新释放的块放置在链表的开始处
 #include "mm.h"
 
 #include <assert.h>
@@ -43,17 +43,68 @@
 /* given block ptr bp, compute address of prev blocks */
 #define PREV_BLKP(bp) ((char*)(bp)-GET_SIZE((char*)(bp)-DSIZE))
 
+/*useful macro definition related to explicit free lists*/
+/* next pointer and pre pointer both take up 32 bits */
+#define GET_PREV(bp) (*(unsigned int*)(bp))
+#define SET_PREV(bp, addr) (*(unsigned int*)(bp) = (addr))
+#define GET_NEXT(bp) (*((unsigned int*)(bp) + 1))
+#define SET_NEXT(bp, addr) (*((unsigned int*)(bp) + 1) = (addr))
+
 static char* heap_listp;
+static char* free_listp;
 
 static void* extend_heap(size_t words);
 static void* coalesce(void* bp);
 static void* find_fit(size_t asize);
-static void split_block(void* bp, size_t asize);
 static void place(void* bp, size_t asize);
 int mm_init(void);
 void* mm_malloc(size_t size);
 void mm_free(void* bp);
 void* mm_realloc(void* ptr, size_t size);
+
+static void remove_from_free_list(void* bp) {
+  if (bp == NULL || GET_ALLOC(HDRP(bp))) {
+    return;
+  }
+  void* prev = GET_PREV(bp);
+  void* next = GET_NEXT(bp);
+
+  SET_PREV(bp, 0);
+  SET_NEXT(bp, 0);
+
+  if (prev == NULL && next == NULL) {
+    // only one block
+    free_listp = NULL;
+  } else if (prev == NULL) {
+    // bp is the first block pointer
+    SET_PREV(next, 0);
+    free_listp = next;
+  } else if (next == NULL) {
+    // bp is the last block pointer
+    SET_NEXT(prev, 0);
+  } else {
+    SET_NEXT(prev, next);
+    SET_PREV(next, prev);
+  }
+}
+static void insert_to_free_list(void* bp) {
+  if (bp == NULL) {
+    return;
+  }
+  if (free_listp == NULL) {
+    // free lists is empty
+    free_listp = bp;
+    SET_NEXT(bp, 0);
+    SET_PREV(bp, 0);
+    return;
+  }
+
+  // insert to the head of free lists
+  SET_PREV(bp, 0);
+  SET_NEXT(bp, free_listp);
+  SET_PREV(free_listp, bp);
+  free_listp = bp;
+}
 
 team_t team = {
     /* Team name */
@@ -79,11 +130,13 @@ static void* extend_heap(size_t words) {
   if ((long)(bp = mem_sbrk(size)) == -1) return NULL;
 
   /* Initialize free block header/footer and the epilogue header */
-  PUT(HDRP(bp), PACK(size, 0));          // free block header
-  PUT(FTRP(bp), PACK(size, 0));          // free block footer
+  PUT(HDRP(bp), PACK(size, 0));  // free block header
+  PUT(FTRP(bp), PACK(size, 0));  // free block footer
+  SET_PREV(bp, 0);
+  SET_NEXT(bp, 0);
   PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));  // new epilogue header
 
-  return bp;  // coalesce if the previous block was free
+  return coalesce(bp);  // coalesce if the previous block was free
 }
 
 /*
@@ -94,45 +147,44 @@ static void* coalesce(void* bp) {
   size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
   size_t size = GET_SIZE(HDRP(bp));
 
-  if (prev_alloc && next_alloc)
-    return bp;
-  else if (prev_alloc && !next_alloc) {
+  void* prev_bp = PREV_BLKP(bp);
+  void* next_bp = NEXT_BLKP(bp);
+
+  if (prev_alloc && next_alloc) {
+  } else if (prev_alloc && !next_alloc) {
+    remove_from_free_list(next_bp);
     size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
     PUT(HDRP(bp), PACK(size, 0));
     PUT(FTRP(bp), PACK(size, 0));
   } else if (!prev_alloc && next_alloc) {
+    remove_from_free_list(prev_bp);
     size += GET_SIZE(HDRP(PREV_BLKP(bp)));
     PUT(FTRP(bp), PACK(size, 0));
     PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
     bp = PREV_BLKP(bp);
   } else {
+    remove_from_free_list(next_bp);
+    remove_from_free_list(prev_bp);
     size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
     PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
     PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
     bp = PREV_BLKP(bp);
   }
-
+  insert_to_free_list(bp);
   return bp;
 }
 
 /*
- * find_fit - use best fit strategy to find an empty block.
+ * find_fit - use first fit strategy to find an empty block.
  */
 static void* find_fit(size_t asize) {
   char* bp;
-  char* best = NULL;
-  for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
-    if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize) {
-      if (!best) {
-        best = bp;
-      } else {
-        best = (GET_SIZE(HDRP(best)) - asize) < (GET_SIZE(HDRP(bp)) - asize)
-                   ? best
-                   : bp;
-      }
+  for (bp = free_listp; bp; bp = GET_NEXT(bp)) {
+    if (GET_SIZE(HDRP(bp)) >= asize) {
+      return bp;
     }
   }
-  return best;
+  return NULL;
 }
 
 /*
@@ -142,13 +194,16 @@ static void* find_fit(size_t asize) {
  */
 static void place(void* bp, size_t asize) {
   size_t csize = GET_SIZE(HDRP(bp));
-
+  remove_from_free_list(bp);
   if ((csize - asize) >= MINBLOCKSIZE) {
     PUT(HDRP(bp), PACK(asize, 1));
     PUT(FTRP(bp), PACK(asize, 1));
     bp = NEXT_BLKP(bp);
     PUT(HDRP(bp), PACK(csize - asize, 0));
     PUT(FTRP(bp), PACK(csize - asize, 0));
+    SET_NEXT(bp, 0);
+    SET_PREV(bp, 0);
+    coalesce(bp);
   } else {
     PUT(HDRP(bp), PACK(csize, 1));
     PUT(FTRP(bp), PACK(csize, 1));
@@ -165,6 +220,7 @@ int mm_init(void) {
   PUT(heap_listp + (2 * WSIZE), PACK(DSIZE, 1));  // prologue footer
   PUT(heap_listp + (3 * WSIZE), PACK(0, 1));      // epilogue header
   heap_listp += (2 * WSIZE);
+  free_listp = NULL;
 
   if (extend_heap(CHUNKSIZE / WSIZE) == NULL) return -1;
   return 0;
@@ -191,19 +247,6 @@ void* mm_malloc(size_t size) {
     place(bp, asize);
     return bp;
   }
-  // no fit found, coalesce free block first
-  char* coalesce_ptr;
-  for (coalesce_ptr = heap_listp; GET_SIZE(HDRP(coalesce_ptr)) > 0;
-       coalesce_ptr = NEXT_BLKP(coalesce_ptr)) {
-    if (!GET_ALLOC(HDRP(coalesce_ptr))) {
-      coalesce(coalesce_ptr);
-    }
-  }
-  // try to find fit after coalesce
-  if ((bp = find_fit(asize)) != NULL) {
-    place(bp, asize);
-    return bp;
-  }
 
   // no fit found, get more memory and place the block
   extendsize = MAX(asize, CHUNKSIZE);
@@ -220,6 +263,9 @@ void mm_free(void* bp) {
 
   PUT(HDRP(bp), PACK(size, 0));
   PUT(FTRP(bp), PACK(size, 0));
+  SET_PREV(bp, 0);
+  SET_NEXT(bp, 0);
+  coalesce(bp);
 }
 
 /*
