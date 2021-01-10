@@ -25,6 +25,8 @@ int bitXor(int x, int y) {
 
 简要分析可以很容易理解，实际上实现该函数用到的是离散数学和数字逻辑电路的知识。其本质是通过与门和非门实现异或门。将异或运算符通过逻辑运算符表示如下：
 
+*如果下方无法显式公式，请安装[github的MathJax插件](https://chrome.google.com/webstore/detail/mathjax-3-plugin-for-gith/peoghobgdhejhcmgoppjpjcidngdfkod/related)*
+
 ${\displaystyle p\oplus q= (\lnot(p\land q)\land \lnot(\lnot p\land \lnot q))}$
 
 通过上式我们可以实现函数。
