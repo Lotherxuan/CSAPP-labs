@@ -340,23 +340,15 @@ void* mm_realloc(void* ptr, size_t size) {
   int remainder;
 
   if (size == 0) return NULL;
-
-  /* 内存对齐 */
   if (size <= DSIZE) {
     size = 2 * DSIZE;
   } else {
     size = ALIGN(size + DSIZE);
   }
-
-  /* 如果size小于原来块的大小，直接返回原来的块 */
   if ((remainder = GET_SIZE(HDRP(ptr)) - size) >= 0) {
     return ptr;
-  }
-  /* 否则先检查地址连续下一个块是否为free块或者该块是堆的结束块，因为我们要尽可能利用相邻的free块，以此减小“external
-     fragmentation” */
-  else if (!GET_ALLOC(HDRP(NEXT_BLKP(ptr))) ||
-           !GET_SIZE(HDRP(NEXT_BLKP(ptr)))) {
-    /* 即使加上后面连续地址上的free块空间也不够，需要扩展块 */
+  } else if (!GET_ALLOC(HDRP(NEXT_BLKP(ptr))) ||
+             !GET_SIZE(HDRP(NEXT_BLKP(ptr)))) {
     if ((remainder =
              GET_SIZE(HDRP(ptr)) + GET_SIZE(HDRP(NEXT_BLKP(ptr))) - size) < 0) {
       if (extend_heap(MAX(-remainder, CHUNKSIZE) / WSIZE) == NULL) {
@@ -364,8 +356,6 @@ void* mm_realloc(void* ptr, size_t size) {
       }
       remainder += MAX(-remainder, CHUNKSIZE);
     }
-
-    /* 删除刚刚利用的free块并设置新块的头尾 */
     delete_node(NEXT_BLKP(ptr));
     PUT(HDRP(ptr), PACK(size + remainder, 1));
     PUT(FTRP(ptr), PACK(size + remainder, 1));
@@ -374,6 +364,5 @@ void* mm_realloc(void* ptr, size_t size) {
     memcpy(new_ptr, ptr, GET_SIZE(HDRP(ptr)));
     mm_free(ptr);
   }
-
   return new_ptr;
 }

@@ -18,6 +18,7 @@
 
 #define WSIZE 4
 #define DSIZE 8
+#define INITSIZE (1 << 6)
 #define CHUNKSIZE (1 << 12) /* Extend heap by this amount (bytes) */
 #define MINBLOCKSIZE 2 * DSIZE
 
@@ -56,7 +57,7 @@ static char* separated_free_lists[LISTCOUNT];
 static void* extend_heap(size_t words);
 static void* coalesce(void* bp);
 static void* find_fit(size_t asize);
-static void place(void* bp, size_t asize);
+static void* place(void* bp, size_t asize);
 static void insert_node(void* bp);
 static void delete_node(void* bp);
 int mm_init(void);
@@ -243,20 +244,29 @@ static void* find_fit(size_t asize) {
  *         and only split if the remaining part is equal to or larger than the
  * size of the smallest block
  */
-static void place(void* bp, size_t asize) {
+static void* place(void* bp, size_t asize) {
   size_t csize = GET_SIZE(HDRP(bp));
   delete_node(bp);
-  if ((csize - asize) >= MINBLOCKSIZE) {
-    PUT(HDRP(bp), PACK(asize, 1));
-    PUT(FTRP(bp), PACK(asize, 1));
-    bp = NEXT_BLKP(bp);
-    PUT(HDRP(bp), PACK(csize - asize, 0));
-    PUT(FTRP(bp), PACK(csize - asize, 0));
-    SET_NEXT(bp, 0);
-    SET_PREV(bp, 0);
-  } else {
+  if ((csize - asize) < MINBLOCKSIZE) {
     PUT(HDRP(bp), PACK(csize, 1));
     PUT(FTRP(bp), PACK(csize, 1));
+    return bp;
+  } else if (asize >= 96) {
+    PUT(HDRP(bp), PACK(csize - asize, 0));
+    PUT(FTRP(bp), PACK(csize - asize, 0));
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(asize, 1));
+    PUT(FTRP(NEXT_BLKP(bp)), PACK(asize, 1));
+    insert_node(bp);
+    return NEXT_BLKP(bp);
+  } else {
+    PUT(HDRP(bp), PACK(asize, 1));
+    PUT(FTRP(bp), PACK(asize, 1));
+    void* next_ptr = NEXT_BLKP(bp);
+    PUT(HDRP(next_ptr), PACK(csize - asize, 0));
+    PUT(FTRP(next_ptr), PACK(csize - asize, 0));
+    insert_node(next_ptr);
+    return bp;
+    ;
   }
 }
 
@@ -276,7 +286,7 @@ int mm_init(void) {
   PUT(heap_listp + (3 * WSIZE), PACK(0, 1));      // epilogue header
   heap_listp += (2 * WSIZE);
 
-  if (extend_heap(CHUNKSIZE / WSIZE) == NULL) return -1;
+  if (extend_heap(INITSIZE / WSIZE) == NULL) return -1;
   return 0;
 }
 
@@ -298,15 +308,14 @@ void* mm_malloc(size_t size) {
     asize = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) / DSIZE);
 
   if ((bp = find_fit(asize)) != NULL) {
-    place(bp, asize);
-    return bp;
+    return place(bp, asize);
   }
 
   // no fit found, get more memory and place the block
   extendsize = MAX(asize, CHUNKSIZE);
   if ((bp = extend_heap(extendsize / WSIZE)) == NULL) return NULL;
-  place(bp, asize);
-  return bp;
+  return place(bp, asize);
+  ;
 }
 
 /*
@@ -326,16 +335,33 @@ void mm_free(void* bp) {
  */
 
 void* mm_realloc(void* ptr, size_t size) {
-  void* oldptr = ptr;
-  void* newptr;
-  size_t copySize;
+  void* new_ptr = ptr;
+  int remainder;
 
-  newptr = mm_malloc(size);
-  if (newptr == NULL) return NULL;
-  size = GET_SIZE(HDRP(oldptr));
-  copySize = GET_SIZE(HDRP(newptr));
-  if (size < copySize) copySize = size;
-  memcpy(newptr, oldptr, copySize - WSIZE);
-  mm_free(oldptr);
-  return newptr;
+  if (size == 0) return NULL;
+  if (size <= DSIZE) {
+    size = 2 * DSIZE;
+  } else {
+    size = ALIGN(size + DSIZE);
+  }
+  if ((remainder = GET_SIZE(HDRP(ptr)) - size) >= 0) {
+    return ptr;
+  } else if (!GET_ALLOC(HDRP(NEXT_BLKP(ptr))) ||
+             !GET_SIZE(HDRP(NEXT_BLKP(ptr)))) {
+    if ((remainder =
+             GET_SIZE(HDRP(ptr)) + GET_SIZE(HDRP(NEXT_BLKP(ptr))) - size) < 0) {
+      if (extend_heap(MAX(-remainder, CHUNKSIZE) / WSIZE) == NULL) {
+        return NULL;
+      }
+      remainder += MAX(-remainder, CHUNKSIZE);
+    }
+    delete_node(NEXT_BLKP(ptr));
+    PUT(HDRP(ptr), PACK(size + remainder, 1));
+    PUT(FTRP(ptr), PACK(size + remainder, 1));
+  } else {
+    new_ptr = mm_malloc(size);
+    memcpy(new_ptr, ptr, GET_SIZE(HDRP(ptr)));
+    mm_free(ptr);
+  }
+  return new_ptr;
 }

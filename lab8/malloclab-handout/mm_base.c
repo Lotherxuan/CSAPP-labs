@@ -1,5 +1,3 @@
-#include "mm.h"
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +5,7 @@
 #include <unistd.h>
 
 #include "memlib.h"
+#include "mm.h"
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
