@@ -209,17 +209,6 @@ Phase 1 defused. How about the next one?
 ## phase2
 
 ```assembly
-(gdb) file ./bomb
-Reading symbols from ./bomb...
-(gdb) b phase_2
-Breakpoint 1 at 0x400efc
-(gdb) r
-Starting program: /home/lotherxuan/workspace/CSAPP-labs/lab2/bomb/bomb 
-Welcome to my fiendish little bomb. You have 6 phases with
-which to blow yourself up. Have a nice day!
-Border relations with Canada have never been better.
-Phase 1 defused. How about the next one?
-debug phase_2
 (gdb) x/25i $rip
 => 0x400efc <phase_2>:  		push   %rbp
    0x400efd <phase_2+1>:        push   %rbx
@@ -338,7 +327,7 @@ Breakpoint 1, 0x0000000000400f43 in phase_3 ()
    0x400fcd <phase_3+138>:      ret    
 ```
 
-同样和前面的phase一样，我们让程序运行到`phase_3`的位置，然后打印出`phase_3`的汇编代码。我们主要关注第15行和第15行下面接着的连续16行代码。可以看到该phase主要考察对*switch*语句的运用和理解。(%rsp+8)的值实际上充当了地址的偏移量，指向了*switch*语句中某一个case的地址。接着观察12、13行，我们可以看到(%rsp+8)的值被限定到不大于7,且是一个无符号数，故取值范围为0~7共8个值。然后我们观察第15行下面接着的连续16行代码，可以看到没两行代码为一组，结构都是给%eax赋值，然后跳转到某一个地址。这也印证了我们先前的猜想。下面我们打印出地址0x402470处的值如下。从打印出来的16进制表示我们可以看到如下特点，首先是每64位为一组，表示一个地址值。每一行存储了两个地址。其次我们从字节顺序也能发现这是小端序的机器。接下来就可以解出phase3了，每一个*(%rsp+8)*的值对应着跳转到下面的某个*case*,也就意味着对应着某个*(%rsp+12)*的值，故最终有8个解。
+同样和前面的phase一样，我们让程序运行到`phase_3`的位置，然后打印出`phase_3`的汇编代码。我们主要关注第15行和第15行下面接着的连续16行代码。可以看到该phase主要考察对switch语句的运用和理解。(%rsp+8)的值实际上充当了地址的偏移量，指向了switch语句中某一个case的地址。接着观察12、13行，我们可以看到(%rsp+8)的值被限定到不大于7,且是一个无符号数，故取值范围为0~7共8个值。然后我们观察第15行下面接着的连续16行代码，可以看到每两行代码为一组，结构都是给%eax赋值，然后跳转到某一个地址。这也印证了我们先前的猜想。下面我们打印出地址0x402470处的值如下。从打印出来的16进制表示我们可以看到如下特点，首先是每64位为一组，表示一个地址值。每一行存储了两个地址。其次我们从字节顺序也能发现这是小端序的机器。接下来就可以解出phase3了，每一个(%rsp+8)的值对应着跳转到下面的某个case,也就意味着对应着某个(%rsp+12)的值，故最终有8个解。
 
 ```assembly
 (gdb) x/20x 0x402470
@@ -392,7 +381,7 @@ Halfway there!
    0x40105d <phase_4+81>:       add    $0x18,%rsp
    0x401061 <phase_4+85>:       ret
 ```
-同样和前面的phase一样，我们让程序运行到*phase_4*的位置，然后打印出*phase_4*的汇编代码。首先由第3、4行分配的地址以及第5行向*scanf*传递的参数可以看到该phase我们预计将输入2个数字。其中*(%rsp+12)*的值比较好确定。我们直接关注第19、20行，可以直接解出*(%rsp+12)*的值就是0。至于*(%rsp+8)*的值我们可以首先看向第10行，该行限定了*(%rsp+8)*的范围必须小于14。这是还算挺重要的一个信息，我们会在后面用到。接下来的第13、14、15、16行大致是设置传递给函数*func4*的参数，然后调用函数。第17、18行表示要求函数返回值必须为0。然后我们分析函数*func4*的内容。这其实是一个非常奇怪的递归函数。传递给函数的参数有如下特点，第二、三个参数是程序设定好的常数值，第一个参数虽然来自用户输入，但范围也有所限定。只要能进入这个递归函数体的内部，函数最后的返回值一定是0。所以我们输入的第一个数字可以是小于14的任何数字，第二个数字为0。
+同样和前面的phase一样，我们让程序运行到phase_4的位置，然后打印出phase_4的汇编代码。首先由第3、4行分配的地址以及第5行向`scanf`传递的参数可以看到该phase我们预计将输入2个数字。其中(%rsp+12)的值比较好确定。我们直接关注第19、20行，可以直接解出(%rsp+12)的值就是0。至于(%rsp+8)的值我们可以首先看向第10行，该行限定了(%rsp+8)的范围必须小于14。这是还算挺重要的一个信息，我们会在后面用到。接下来的第13、14、15、16行大致是设置传递给函数`func4`的参数，然后调用函数。第17、18行表示要求函数返回值必须为0。然后我们分析函数`func4`的内容。这其实是一个非常奇怪的递归函数。传递给函数的参数有如下特点，第二、三个参数是程序设定好的常数值，第一个参数虽然来自用户输入，但范围也有所限定。只要能进入这个递归函数体的内部，函数最后的返回值一定是0。所以我们输入的第一个数字可以是小于14的任何数字，第二个数字为0。
 
 顺便说一句，一开始我也对在这里放这样一个返回值为常数的函数感觉非常奇怪。但仔细想想从代码健壮性的角度似乎也是可以理解的，考虑到如果把函数递归次数作为程序暴露给外部的接口，则会有可能出现耗尽栈空间等等结果。
 
@@ -486,7 +475,7 @@ Breakpoint 1, 0x0000000000401062 in phase_5 ()
    0x4010f3 <phase_5+145>:      ret   
 ```
 
-同样和前面的phase一样，我们让程序运行到*phase_5*的位置，然后打印出*phase_5*的汇编代码。由于该段汇编代码比较长，会通过注释的形式辅助讲解这段代码。
+同样和前面的phase一样，我们让程序运行到`phase_5`的位置，然后打印出`phase_5`的汇编代码。由于该段汇编代码比较长，会通过注释的形式辅助讲解这段代码。
 
 首先看到第26行，该行算是核心检测条件。我们把0x10(%rsp)和常数0x40245e这两个字符串的起始地址作为函数的两个参数送入字符串比较函数，根据两个字符串是否相等来决定是否引爆炸弹。第二个参数是已知参数，所以我们可以直接查看字符串内容，如下所示。
 ```shell
@@ -661,9 +650,191 @@ zhanwei 第6-12行是一个执行5次的循环，对应于注释中的情况，�
 
 最后这段代码我们主要关注第1-12行。其中第4-11行是一层循环，循环内的测试条件是我们需要满足的，当不满足测试条件时炸弹爆炸，也就是第7行。第7行要求链表前一个node数据域的值要大于等于后一个node数据域的值。根据地址0x6032d0上的数据，我们可以得出链表的形状为node3->node4->node5->node->6->node1->node2。接下来就可以用到上一段代码的分析，B[0]的值即为0x6032d0+32\*(3-1),B[1]的值即为0x6032d0+32\*(4-1)...然后再用到关系式B[i]=0x6032d0+32*(6-A[i])，可以得到数组A为4 3 2 1 6 5，这也即是我们最终的答案。
 
+完成截图
+
+![](./images/image1.png)
+
 ### secret phase
 
+众所周知CSAPP的bomb lab除了phase1-6之外还有一个secret phase(其实是在看汇编代码的时候看到了符号`<secret_phase>`)
 
+首先我们要找到secret phase的入口，可以通过gdb逐步查看程序的运行过程来找到入口，也可以直接使用vscode反汇编出来的文件中搜索secret，我们可以定位到`phase_defused`函数。
+
+```assembly
+00000000004015c4 <phase_defused>:
+  4015c4:	48 83 ec 78          	sub    $0x78,%rsp
+  4015c8:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
+  4015cf:	00 00
+  4015d1:	48 89 44 24 68       	mov    %rax,0x68(%rsp)
+  4015d6:	31 c0                	xor    %eax,%eax
+  4015d8:	83 3d 81 21 20 00 06 	cmpl   $0x6,0x202181(%rip)        # 603760 <num_input_strings>
+  4015df:	75 5e                	jne    40163f <phase_defused+0x7b>
+  4015e1:	4c 8d 44 24 10       	lea    0x10(%rsp),%r8
+  4015e6:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
+  4015eb:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
+  4015f0:	be 19 26 40 00       	mov    $0x402619,%esi
+  4015f5:	bf 70 38 60 00       	mov    $0x603870,%edi
+  4015fa:	e8 f1 f5 ff ff       	callq  400bf0 <__isoc99_sscanf@plt>
+  4015ff:	83 f8 03             	cmp    $0x3,%eax
+  401602:	75 31                	jne    401635 <phase_defused+0x71>
+  401604:	be 22 26 40 00       	mov    $0x402622,%esi
+  401609:	48 8d 7c 24 10       	lea    0x10(%rsp),%rdi
+  40160e:	e8 25 fd ff ff       	callq  401338 <strings_not_equal>
+  401613:	85 c0                	test   %eax,%eax
+  401615:	75 1e                	jne    401635 <phase_defused+0x71>
+  401617:	bf f8 24 40 00       	mov    $0x4024f8,%edi
+  40161c:	e8 ef f4 ff ff       	callq  400b10 <puts@plt>
+  401621:	bf 20 25 40 00       	mov    $0x402520,%edi
+  401626:	e8 e5 f4 ff ff       	callq  400b10 <puts@plt>
+  40162b:	b8 00 00 00 00       	mov    $0x0,%eax
+  401630:	e8 0d fc ff ff       	callq  401242 <secret_phase>
+  401635:	bf 58 25 40 00       	mov    $0x402558,%edi
+  40163a:	e8 d1 f4 ff ff       	callq  400b10 <puts@plt>
+  40163f:	48 8b 44 24 68       	mov    0x68(%rsp),%rax
+  401644:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
+  40164b:	00 00
+  40164d:	74 05                	je     401654 <phase_defused+0x90>
+  40164f:	e8 dc f4 ff ff       	callq  400b30 <__stack_chk_fail@plt>
+  401654:	48 83 c4 78          	add    $0x78,%rsp
+  401658:	c3                   	retq
+```
+
+这段汇编比较简短也比较简单。第27行是跳转到secret phase的代码，控制条件位于第20-21行，可以看到执行条件是`string_not_equal`的返回结果为0，即两个字符串相等。调用函数`string_not_equal`的两个参数分别为0x402622和$rsp+0x10，通过gdb我们可以查看内存中该地址处的字符串。
+
+```assembly
+(gdb) x/s 0x402622
+0x402622:       "DrEvil"
+```
+
+\$rsp+0x10的含义我们则要找到第8-11行。可以看到\$rsp+0x10是作为参数传递给`sscanf`函数。相比之前对`sscanf`的调用，此处较为不同的是设置了寄存器\$rdi的值，而之前的6个phase调用的时候\$rdi的值都来自于函数`read_line`。也就是说该此调用作为输入的字符串是内存中已经存在的字符串，而不是新输入的字符串。`sscanf`函数第二个参数为格式化字符串，我们可以查看内存中该地址处的字符串。
+
+```assembly
+(gdb) x/s 0x402619
+0x402619:       "%d %d %s"
+```
+
+可以看到输入格式为两个数字和一个字符串，\$rsp+0x10即是存储字符串的地址。然后我们再查看`sscanf`函数第一个参数的值
+
+```assembly
+(gdb) x/s 0x603870
+0x603870 <input_strings+240>:   ""
+```
+
+此处字符串的结果会根据前6个phase输入的不同而不同（此处我是在phase_1输入之前查看的，故字符串为空）。通过比对我们前6个phase的输入和提供的格式化字符串，我们可推断出此处字符串即为phase_4的输入。
+将"DrEvil"附加到phase_4的输入，我们即可进入secret phase。
+
+```shell
+$ ./bomb
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Border relations with Canada have never been better.
+Phase 1 defused. How about the next one?
+1 2 4 8 16 32
+That's number 2.  Keep going!
+0 207
+Halfway there!
+3 0 DrEvil         
+So you got that one.  Try this one.
+9?>567
+Good work!  On to the next...
+4 3 2 1 6 5
+Curses, you've found the secret phase!
+But finding it and solving it are quite different...
+```
+
+`secret_phase`的代码也较为简短。
+
+```assembly
+  401242:	53                   	push   %rbx
+  401243:	e8 56 02 00 00       	callq  40149e <read_line>
+  401248:	ba 0a 00 00 00       	mov    $0xa,%edx
+  40124d:	be 00 00 00 00       	mov    $0x0,%esi
+  401252:	48 89 c7             	mov    %rax,%rdi
+  401255:	e8 76 f9 ff ff       	callq  400bd0 <strtol@plt>
+  40125a:	48 89 c3             	mov    %rax,%rbx
+  40125d:	8d 40 ff             	lea    -0x1(%rax),%eax
+  401260:	3d e8 03 00 00       	cmp    $0x3e8,%eax
+  401265:	76 05                	jbe    40126c <secret_phase+0x2a>
+  401267:	e8 ce 01 00 00       	callq  40143a <explode_bomb>
+  40126c:	89 de                	mov    %ebx,%esi
+  40126e:	bf f0 30 60 00       	mov    $0x6030f0,%edi
+  401273:	e8 8c ff ff ff       	callq  401204 <fun7>
+  401278:	83 f8 02             	cmp    $0x2,%eax
+  40127b:	74 05                	je     401282 <secret_phase+0x40>
+  40127d:	e8 b8 01 00 00       	callq  40143a <explode_bomb>
+  401282:	bf 38 24 40 00       	mov    $0x402438,%edi
+  401287:	e8 84 f8 ff ff       	callq  400b10 <puts@plt>
+  40128c:	e8 33 03 00 00       	callq  4015c4 <phase_defused>
+  401291:	5b                   	pop    %rbx
+  401292:	c3                   	retq
+```
+
+该段代码比较重要的判断条件是第15-16行，检测函数`fun7`的返回值是否为0,不为0时引爆炸弹。调用函数`fun7`时传递了两个参数，其中第一个参数是第13行的常数0x6030f0，第二个参数则比较麻烦，我们依次关注到第12行，第7行和第6行，可以得知\$esi的值来自于函数`strtol`的返回值。我们可以查看c的标准文档来得知该函数的函数签名。
+
+> Parameters
+> str	-	pointer to the null-terminated byte string to be interpreted
+> str_end	-	pointer to a pointer to character.
+> base	-	base of the interpreted integer value
+比较重要的是第1和第3个参数。由第3行设置base值为10,第2行调用`read_line`可以得知函数`strtol`将我们输入的字符串转换为十进制的数，接下来我们就可以分析`fun7`的代码。
+
+```assembly
+  401204:	48 83 ec 08          	sub    $0x8,%rsp
+  401208:	48 85 ff             	test   %rdi,%rdi
+  40120b:	74 2b                	je     401238 <fun7+0x34>
+  40120d:	8b 17                	mov    (%rdi),%edx  
+  40120f:	39 f2                	cmp    %esi,%edx
+  401211:	7e 0d                	jle    401220 <fun7+0x1c> 
+  
+  401213:	48 8b 7f 08          	mov    0x8(%rdi),%rdi
+  401217:	e8 e8 ff ff ff       	callq  401204 <fun7>
+  40121c:	01 c0                	add    %eax,%eax
+  40121e:	eb 1d                	jmp    40123d <fun7+0x39>
+
+  401220:	b8 00 00 00 00       	mov    $0x0,%eax
+  401225:	39 f2                	cmp    %esi,%edx
+  401227:	74 14                	je     40123d <fun7+0x39>
+  401229:	48 8b 7f 10          	mov    0x10(%rdi),%rdi
+  40122d:	e8 d2 ff ff ff       	callq  401204 <fun7>
+
+  401232:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
+  401236:	eb 05                	jmp    40123d <fun7+0x39>
+  401238:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+
+  40123d:	48 83 c4 08          	add    $0x8,%rsp
+  401241:	c3                   	retq
+```
+
+这段代码是一个递归的结构，而且比较符合C语言的风格，我们可以写出等价的C语言代码如下：
+
+```C
+int fun7(void *p, long l) {
+  int res;
+  if (p->data > l) {
+    p = p->left;
+    res = fun7(p, l);
+    res *= 2;
+  } else {
+    res = 0;
+    if (p->data == l) {
+      ;
+    } else {
+      p = p->right;
+      res = fun(p, l);
+      res = 2 * res + 1;
+    }
+  }
+  return res;
+}
+```
+
+这时我们可以去内存中查看第一次传递给`fun7`的指针p的值指向的是什么。
+
+```shell
+(gdb) x/120wx 0x6030f0
+```
+
+由于篇幅限制，这里并不是很好展示出来，但从内存中的数据我们还是能很清楚的看出来内存地址0x6030f0是一个平衡二叉树的结构。由于要求第一次调用`fun7`的返回值为2,我们可以分析出调用堆栈上每一次调用`fun7`的结果，从而得知l的值为22。即secret phase的答案。
 
 ### 完成截图
 
+![](./images/image2.png)
