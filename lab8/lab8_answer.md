@@ -2,7 +2,7 @@
 
 简要介绍实验内容：实验要求我们完成一个动态内存分配器，即模拟malloc,free和realloc功能。完成实验需要我们理解内存布局，管理内存的数据结构，并在时间效率和空间效率上进行权衡取舍。
 
-详细实验内容请见[官网](http://csapp.cs.cmu.edu/3e/labs.html)。
+详细实验内容请见[官网](http://csapp.cs.cmu.edu/3e/malloclab.pdf)。
 
 ### 实验前期准备
 
