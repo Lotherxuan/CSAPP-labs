@@ -1,1 +1,4 @@
 .csim_results
+*.temp
+*.tar
+*.o
