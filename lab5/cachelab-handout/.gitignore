@@ -2,3 +2,6 @@
 *.temp
 *.tar
 *.o
+tracefile*
+trace.f*
+lotherxuan*

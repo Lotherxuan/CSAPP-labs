@@ -22,12 +22,51 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
  */
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N]) {
-  int i, j, tmp;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < M; j++) {
-      tmp = A[i][j];
-      B[j][i] = tmp;
+  if (M == 32 && N == 32) {
+    for (int out_i = 0; out_i < 4; out_i++) {
+      for (int out_j = 0; out_j < 4; out_j++) {
+        int out_row = out_i * 8;
+        int out_column = out_j * 8;
+        for (int row = out_row; row < out_row + 8; row++) {
+          int tmp = -1;
+          for (int column = out_column; column < out_column + 8; column++) {
+            if (row != column) {
+              B[column][row] = A[row][column];
+            } else {
+              tmp = row;
+            }
+          }
+          if (tmp != -1) {
+            int t = A[tmp][tmp];
+            B[tmp][tmp] = t;
+          }
+        }
+      }
+    }
+  } else if (M == 64 && N == 64) {
+    for (int out_i = 0; out_i < 16; out_i++) {
+      for (int out_j = 0; out_j < 16; out_j++) {
+        int out_row = out_i * 4;
+        int out_column = out_j * 4;
+        for (int in_row = 0; in_row < 4; in_row++) {
+          int tmp_row = -1;
+          int tmp_column = -1;
+          for (int in_column = 0; in_column < 4; in_column++) {
+            int row = out_row + in_row;
+            int column = out_column + in_column;
+            if (in_row != in_column) {
+              B[column][row] = A[row][column];
+            } else {
+              tmp_row = row;
+              tmp_column = column;
+            }
+          }
+          if (tmp_row != -1 && tmp_column != -1) {
+            int t = A[tmp_row][tmp_column];
+            B[tmp_column][tmp_row] = t;
+          }
+        }
+      }
     }
   }
 }
