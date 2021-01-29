@@ -5,3 +5,5 @@
 tracefile*
 trace.f*
 lotherxuan*
+trans_base.c
+trans_temp.c
