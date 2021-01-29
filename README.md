@@ -14,4 +14,7 @@ lab4:[Architecture Lab](https://github.com/Lotherxuan/CSAPP-labs/blob/master/lab
 
 lab5:[Cache Lab](https://github.com/Lotherxuan/CSAPP-labs/blob/master/lab5/lab5_answer.md)
 
+lab6:[Shell Lab](https://github.com/Lotherxuan/CSAPP-labs/blob/master/lab6/lab6_answer.md)
+
 lab7:[Malloc Lab](https://github.com/Lotherxuan/CSAPP-labs/blob/master/lab7/lab7_answer.md)
+
