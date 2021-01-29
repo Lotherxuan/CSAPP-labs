@@ -44,26 +44,78 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]) {
       }
     }
   } else if (M == 64 && N == 64) {
-    for (int out_i = 0; out_i < 16; out_i++) {
-      for (int out_j = 0; out_j < 16; out_j++) {
-        int out_row = out_i * 4;
-        int out_column = out_j * 4;
-        for (int in_row = 0; in_row < 4; in_row++) {
-          int tmp_row = -1;
-          int tmp_column = -1;
-          for (int in_column = 0; in_column < 4; in_column++) {
+    int a0, a1, a2, a3, a4, a5, a6, a7, temp;
+    for (int out_i = 0; out_i < 8; out_i++) {
+      for (int out_j = 0; out_j < 8; out_j++) {
+        int out_row = out_i * 8;
+        int out_column = out_j * 8;
+        for (int i = 0; i < 4; i++) {
+          a0 = A[out_row + i][out_column + 0];
+          a1 = A[out_row + i][out_column + 1];
+          a2 = A[out_row + i][out_column + 2];
+          a3 = A[out_row + i][out_column + 3];
+          a4 = A[out_row + i][out_column + 4];
+          a5 = A[out_row + i][out_column + 5];
+          a6 = A[out_row + i][out_column + 6];
+          a7 = A[out_row + i][out_column + 7];
+
+          B[out_column + 0][out_row + i] = a0;
+          B[out_column + 1][out_row + i] = a1;
+          B[out_column + 2][out_row + i] = a2;
+          B[out_column + 3][out_row + i] = a3;
+
+          B[out_column + 0][out_row + i + 4] = a4;
+          B[out_column + 1][out_row + i + 4] = a5;
+          B[out_column + 2][out_row + i + 4] = a6;
+          B[out_column + 3][out_row + i + 4] = a7;
+        }
+        for (int i = 0; i < 4; i++) {
+          a0 = A[out_row + 4][out_column + i];
+          a1 = A[out_row + 5][out_column + i];
+          a2 = A[out_row + 6][out_column + i];
+          a3 = A[out_row + 7][out_column + i];
+
+          a4 = A[out_row + 4][out_column + i + 4];
+          a5 = A[out_row + 5][out_column + i + 4];
+          a6 = A[out_row + 6][out_column + i + 4];
+          a7 = A[out_row + 7][out_column + i + 4];
+
+          temp = B[out_column + i][out_row + 4];
+          B[out_column + i][out_row + 4] = a0;
+          a0 = temp;
+          temp = B[out_column + i][out_row + 5];
+          B[out_column + i][out_row + 5] = a1;
+          a1 = temp;
+          temp = B[out_column + i][out_row + 6];
+          B[out_column + i][out_row + 6] = a2;
+          a2 = temp;
+          temp = B[out_column + i][out_row + 7];
+          B[out_column + i][out_row + 7] = a3;
+          a3 = temp;
+
+          B[out_column + 4 + i][out_row + 0] = a0;
+          B[out_column + 4 + i][out_row + 1] = a1;
+          B[out_column + 4 + i][out_row + 2] = a2;
+          B[out_column + 4 + i][out_row + 3] = a3;
+          B[out_column + 4 + i][out_row + 4] = a4;
+          B[out_column + 4 + i][out_row + 5] = a5;
+          B[out_column + 4 + i][out_row + 6] = a6;
+          B[out_column + 4 + i][out_row + 7] = a7;
+        }
+      }
+    }
+  } else if (N == 67 && M == 61) {
+    for (int out_i = 0; out_i < 5; out_i++) {
+      for (int out_j = 0; out_j < 4; out_j++) {
+        int out_row = out_i * 16;
+        int out_column = out_j * 16;
+        for (int in_row = 0; in_row < 16; in_row++) {
+          for (int in_column = 0; in_column < 16; in_column++) {
             int row = out_row + in_row;
             int column = out_column + in_column;
-            if (in_row != in_column) {
+            if (row < 67 && column < 61) {
               B[column][row] = A[row][column];
-            } else {
-              tmp_row = row;
-              tmp_column = column;
             }
-          }
-          if (tmp_row != -1 && tmp_column != -1) {
-            int t = A[tmp_row][tmp_column];
-            B[tmp_column][tmp_row] = t;
           }
         }
       }
