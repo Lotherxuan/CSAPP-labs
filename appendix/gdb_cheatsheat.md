@@ -158,3 +158,28 @@ watch <表达式>         //<表达式>发生变化时暂停运行
 awatch <表达式>         //<表达式>被访问、改变时暂停运行
 
 rwatch <表达式>          //<表达式>被访问时暂停运行
+
+##### 12.显示源代码
+
+info win   显示窗口的大小
+layout next 切换到下一个布局模式
+layout prev 切换到上一个布局模式
+layout src  只显示源代码
+layout asm  只显示汇编代码
+layout split 显示源代码和汇编代码
+layout regs  增加寄存器内容显示
+focus cmd/src/asm/regs/next/prev 切换当前窗口
+
+
+
+##### 13.显示函数相关设置
+
+```
+`set print asm-demangle'
+`set print asm-demangle on'
+     Print C++ names in their source form rather than their mangled
+     form, even in assembler code printouts such as instruction
+     disassemblies.  The default is off.
+```
+
+TODO:有待进一步使用熟悉，并修改上述显示源代码部分的文本。
